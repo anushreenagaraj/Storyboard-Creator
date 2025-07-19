@@ -1,6 +1,6 @@
 from diffusers import StableDiffusionPipeline
 import torch
-from PIL import Image
+from PIL import Image 
 import os
 
 # Load the model (will download ~4GB first time)
