@@ -4,9 +4,9 @@ import torch
 from PIL import Image
 import os
 from fpdf import FPDF
-import io
 import random
 
+# Load model
 @st.cache_resource
 def load_model():
     pipe = StableDiffusionPipeline.from_pretrained(
@@ -18,10 +18,12 @@ def load_model():
     pipe = pipe.to("cpu")
     return pipe
 
+# Generate image using prompt
 def generate_image(pipe, prompt):
     image = pipe(prompt, height=384, width=384).images[0]
     return image
 
+# Generate a PDF from images and captions
 def create_pdf(images, captions):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -35,11 +37,10 @@ def create_pdf(images, captions):
         pdf.set_font("Arial", size=12)
         pdf.multi_cell(0, 10, cap or " ")
 
-    # Save to string then encode as bytes
     pdf_bytes = pdf.output(dest='S').encode('latin-1')
     return pdf_bytes
 
-
+# Generate AI prompt ideas
 def ai_generate_prompts(base_prompt, num):
     variations = [
         f"{base_prompt}, early morning",
@@ -55,7 +56,7 @@ def ai_generate_prompts(base_prompt, num):
     ]
     return random.sample(variations, k=num)
 
-# ✅ Frame-by-frame AI prompt assist
+# Frame-wise suggestion
 def suggest_prompt(frame_number):
     ideas = [
         "A magical discovery in the forest",
@@ -71,9 +72,10 @@ def suggest_prompt(frame_number):
     ]
     return f"Frame {frame_number + 1}: {random.choice(ideas)}"
 
+# Load model
 pipe = load_model()
 
-st.set_page_config(layout="wide")
+# UI
 st.title("🎬 Storyboard Creator")
 st.markdown("Generate a storyboard using your own prompts or AI assistance.")
 
@@ -90,33 +92,53 @@ if use_ai:
             st.text_input(f"AI Prompt for Frame {i + 1}", value=p, key=f"ai_{i}")
 else:
     input_mode = st.radio("Choose prompt mode", ["Single Prompt for All Frames", "Separate Prompts Per Frame"])
+
     if input_mode == "Single Prompt for All Frames":
         main_prompt = st.text_input("Enter prompt for all frames")
         if main_prompt:
             prompts = [main_prompt] * num_frames
     else:
         for i in range(num_frames):
+            key = f"prompt_{i}"
+            suggest_key = f"suggest_{i}"
+
+            # Initialize suggestion flag
+            if suggest_key not in st.session_state:
+                st.session_state[suggest_key] = False
+
             col1, col2 = st.columns([4, 1])
-            with col1:
-                prompt = st.text_input(f"Prompt for Frame {i + 1}", key=f"prompt_{i}")
+
             with col2:
                 if st.button(f"✨ AI", key=f"ai_button_{i}"):
-                    prompt = suggest_prompt(i)
-                    st.session_state[f"prompt_{i}"] = prompt
-            prompts.append(st.session_state.get(f"prompt_{i}", ""))
+                    st.session_state[suggest_key] = True
+                    st.rerun()
 
-if st.button("🎨 Generate Storyboard Images") and prompts and len(prompts) == num_frames:
-    images = []
-    captions = []
-    with st.spinner("Generating images..."):
-        for i, prompt in enumerate(prompts):
-            st.subheader(f"🖼 Frame {i + 1}")
-            img = generate_image(pipe, prompt)
-            st.image(img, caption=f"Prompt: {prompt}", use_container_width=True)
-            captions.append(f"Prompt: {prompt}")
-            images.append(img)
-            captions.append("")
 
-    # Save and download as PDF
-    pdf_data = create_pdf(images, captions)
-    st.download_button("📄 Download Storyboard as PDF", data=pdf_data, file_name="storyboard.pdf", mime="application/pdf")
+            # If AI button clicked, set value before widget creation
+            if st.session_state[suggest_key]:
+                st.session_state[key] = suggest_prompt(i)
+                st.session_state[suggest_key] = False
+
+            with col1:
+                value = st.session_state.get(key, "")
+                st.text_input(f"Prompt for Frame {i + 1}", key=key, value=value)
+
+        # Collect prompts
+        prompts = [st.session_state.get(f"prompt_{i}", "") for i in range(num_frames)]
+
+# Generate Storyboard
+if st.button("🎨 Generate Storyboard Images"):
+    if len(prompts) == num_frames:
+        images = []
+        captions = []
+        with st.spinner("Generating images..."):
+            for i, prompt in enumerate(prompts):
+                st.subheader(f"🖼 Frame {i + 1}")
+                img = generate_image(pipe, prompt)
+                st.image(img, caption=f"Prompt: {prompt}")
+                images.append(img)
+                captions.append(f"Prompt: {prompt}")
+
+        # Save to PDF
+        pdf_data = create_pdf(images, captions)
+        st.download_button("📄 Download Storyboard as PDF", data=pdf_data, file_name="storyboard.pdf", mime="application/pdf")
