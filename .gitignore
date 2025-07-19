@@ -1,0 +1,17 @@
+# Python junk
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env/
+
+# Model weights or large files
+local_sd_model/
+
+# Editor settings
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db

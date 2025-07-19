@@ -1,0 +1,8 @@
+# Core dependencies
+streamlit==1.35.0
+torch==2.3.0
+diffusers==0.27.2
+transformers==4.41.2
+pillow==10.3.0
+fpdf==1.7.2
+requests==2.32.3
