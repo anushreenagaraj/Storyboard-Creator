@@ -1,5 +1,5 @@
 from diffusers import StableDiffusionPipeline
-import torch
+import torch 
 
 print("Downloading Stable Diffusion v1-4...")
 
